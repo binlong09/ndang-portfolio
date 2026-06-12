@@ -137,7 +137,16 @@ export default function StockVetterPage() {
                       />
                     </div>
 
-                    {worked && <p>{cyclicalityDeep.summary}</p>}
+                    {worked ? (
+                      <p>{cyclicalityDeep.summary}</p>
+                    ) : (
+                      d.rationale && (
+                        <p className="why">
+                          <span className="why-k">why {d.score.toFixed(1)}</span>
+                          {d.rationale}
+                        </p>
+                      )
+                    )}
 
                     <span className="annot">
                       <span className="annot-k">what to look for</span>
@@ -236,7 +245,7 @@ export default function StockVetterPage() {
               <p className="dcf-gloss">{dcf.gloss}</p>
 
               <details className="threepass" style={{ marginTop: 16 }}>
-                <summary>Sensitivity grid</summary>
+                <summary>Valuation multiples</summary>
                 <table className="weights" style={{ marginTop: 14 }}>
                   <thead>
                     <tr>

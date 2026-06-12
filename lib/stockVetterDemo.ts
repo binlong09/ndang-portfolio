@@ -22,7 +22,9 @@ export type Dimension = {
   key: string;
   name: string;
   score: number; // hardcoded captured score, 0-10
-  hint: string; // "what to look for"
+  hint: string; // generic "what to look for"
+  rationale?: string; // captured "why this score" sentence (omitted for cyclicality,
+  // which carries the full rationale + 3-pass loop instead)
 };
 
 export const dimensions: Dimension[] = [
@@ -31,30 +33,40 @@ export const dimensions: Dimension[] = [
     name: "Moat",
     score: 7.5,
     hint: "How protected the profits are from competition. The wider the moat, the more durable future cash flows.",
+    rationale:
+      "CUDA's installed base of 7.5M developers and full-stack co-design create real lock-in, but hyperscaler custom ASICs and China foreclosure keep it contestable.",
   },
   {
     key: "owner-earnings",
     name: "Owner-earnings",
     score: 7.5,
     hint: "Net income plus non-cash charges, minus the maintenance capex the business genuinely needs. A cleaner read on what an owner could pocket than reported EPS.",
+    rationale:
+      "FCF tracks net income closely and converts well, but a $8.9B non-cash equity gain and fast-growing stock-based comp distort reported earnings upward.",
   },
   {
     key: "capital-allocation",
     name: "Capital allocation",
     score: 5.5,
     hint: "How well management deploys free cash flow across reinvestment, buybacks, dividends, and M&A. Judged by what they did, not what they said.",
+    rationale:
+      "Buybacks and R&D are funded entirely from free cash flow, but $17.5B into illiquid startups and a $13B Groq outlay at peak valuations raise timing-discipline questions.",
   },
   {
     key: "debt",
     name: "Debt sustainability",
     score: 9.5,
     hint: "Whether the balance sheet can carry its obligations through a downturn. Coverage ratios and net debt against the cash the business throws off.",
+    rationale:
+      "A fortress balance sheet — ~$54B net cash, ~400× interest coverage, non-financial covenants — with only large off-balance-sheet supply commitments as a caveat.",
   },
   {
     key: "insider",
     name: "Insider alignment",
     score: 9.0,
     hint: "Whether the people running the business have real skin in the game, with incentives aligned to long-term owners.",
+    rationale:
+      "Founder-CEO holds a 3.58% stake with 96% performance-linked pay and no hedging or pledging; the only blemish is minor related-party items.",
   },
   {
     key: "cyclicality",
