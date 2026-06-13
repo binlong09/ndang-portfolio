@@ -73,7 +73,17 @@ export default function ProjectDeepDive({ deep }: { deep: DeepDive }) {
         <div className="shots">
           {deep.assets.map((a, i) => (
             <figure className="shot" key={i}>
-              {a.src ? (
+              {a.video ? (
+                <video
+                  src={a.video}
+                  poster={a.src}
+                  aria-label={a.alt}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                />
+              ) : a.src ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={a.src} alt={a.alt} />
               ) : (

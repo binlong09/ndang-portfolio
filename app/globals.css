@@ -482,7 +482,8 @@ footer a:hover { color: var(--accent-deep); }
 .shot {
   margin: 0;
 }
-.shot img {
+.shot img,
+.shot video {
   display: block;
   width: 100%;
   height: auto;

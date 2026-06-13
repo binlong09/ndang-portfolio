@@ -15,6 +15,12 @@ export type Decision = { title: string; body: string };
 export type Asset = {
   token: string; // ASSET_<project> placeholder, shown in the empty state
   src?: string; // when absent, an empty state is rendered for this image
+  /**
+   * When set, the asset is a video rendered as an autoplaying, muted, looped
+   * <video> (with `src` used as a poster/fallback image if it is itself an
+   * image). Use for screen recordings.
+   */
+  video?: string;
   alt: string;
   caption: string; // shown small, directly under the image
 };
@@ -155,9 +161,10 @@ export const deepDives: Record<string, DeepDive> = {
     assets: [
       {
         token: "ASSET_coding-agent",
-        // src: "/shots/coding-agent.png",
-        alt: "Terminal capture of the acceptance test: the agent runs calc.py, sees the AssertionError, changes a - b to a + b with str_replace, re-runs, and prints ok",
-        caption: "Acceptance test: the agent fixes a failing calc.py with str_replace, then re-runs to green (capture to be added).",
+        video: "/shots/coding-agent-demo.mp4",
+        src: "/shots/coding-agent-demo.gif",
+        alt: "Terminal screen recording of the agent driving the local Qwen model through its tool loop — reading files, making str_replace edits, and running bash to complete a task",
+        caption: "The self-hosted agent running its tool loop against the local Qwen model.",
       },
       // Append more { token, src, alt, caption } objects for additional captures.
     ],
