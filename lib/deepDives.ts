@@ -176,8 +176,8 @@ export const deepDives: Record<string, DeepDive> = {
         token: "ASSET_coding-agent",
         video: "/shots/coding-agent-demo.mp4",
         src: "/shots/coding-agent-demo.gif",
-        alt: "Terminal screen recording of the agent driving the local Qwen model through its tool loop — reading files, making fenced search/replace edits, running bash, and signalling task_complete to finish",
-        caption: "The self-hosted agent running its tool loop against the local Qwen model.",
+        alt: "Terminal screen recording of the agent fixing a bug in a small multi-file project — locating the broken discount with search, editing pricing.py with a fenced search/replace block, re-running the test, and ending on the green task_complete panel",
+        caption: "Finding and fixing a bug across a multi-file project: search → read → edit → verify → evidence-gated task_complete (sped up; the local 30b runs in real time).",
       },
       // Append more { token, src, alt, caption } objects for additional captures.
     ],
