@@ -117,25 +117,25 @@ export const projects: Project[] = [
     codeUrl: "https://github.com/binlong09/qwen-code",
     liveUrl: "TODO", // TODO: add real live URL
     spec: [
-      { k: "stack", v: "Python · Ollama · qwen3-coder:30b · OpenAI client · Tailscale" },
+      { k: "stack", v: "Python · Ollama · qwen3-coder:30b · DeepSeek (fallback) · ripgrep · OpenAI client · Tailscale" },
       { k: "scope", v: "solo build, single file (agent.py)" },
-      { k: "status", v: "v0.1" },
+      { k: "status", v: "v1.2" },
     ],
     prose: [
       {
         label: "Problem",
         body:
-          "I wanted to understand how agentic coding tools really work under the hood, and to run one entirely on my own hardware, against open models, with no API dependency or per-token cost.",
+          "I wanted to understand how agentic coding tools really work under the hood, and to run one entirely on my own hardware against open models — local-first, with no per-token cost in the common case and only an optional hosted fallback for when the local box is unreachable.",
       },
       {
         label: "What it does",
         body:
-          "A single-file agent (agent.py) drives a local Qwen model through a four-tool loop: read a file, write a file, str_replace edits, and run bash. It streams the model's output and feeds tool results back until the task is done, with a self-describing harness that states the working directory and tool invariants and returns actionable errors, so the model can recover from its own mistakes.",
+          "A single-file agent (agent.py) drives a local Qwen model through a six-tool loop: read a file, create a file, edit with fenced search/replace blocks, search the tree with ripgrep, run bash (the model itself flags risky commands for approval), and signal task_complete. It streams the model's output and feeds tool results back, ending only when the agent calls task_complete with file-path evidence the harness verifies — a self-describing harness that states the working directory and tool invariants and returns actionable errors, so the model can recover from its own mistakes.",
       },
       {
         label: "Outcome",
         body:
-          "A genuinely usable, fully self-hosted coding agent in a single file, and a much sharper feel for tool-use design, harness legibility, and where agentic systems break.",
+          "A genuinely usable, local-first coding agent in a single file — and a much sharper feel for tool-use design, harness legibility, evidence-gated termination, and where agentic systems break.",
       },
     ],
   },

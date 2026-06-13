@@ -110,24 +110,28 @@ export const deepDives: Record<string, DeepDive> = {
   "coding-agent": {
     architecture: {
       intro: [
-        "qwen-code is a minimal coding agent in one file (agent.py): a loop driving a local Qwen model through four tools, with the OpenAI Python client pointed at Ollama's OpenAI-compatible endpoint and native tool calling.",
+        "qwen-code is a minimal coding agent in one file (agent.py): a loop driving a local Qwen model through six tools, with the OpenAI Python client pointed at Ollama's OpenAI-compatible endpoint and native tool calling. It runs local-first and falls back to a hosted DeepSeek endpoint only when the local box fails a startup health check.",
       ],
-      diagram: `  [task or REPL prompt]
+      diagram: `  [task or REPL prompt]   (/model, /cost slash commands)
         │
         ▼
-  [agent loop · up to 25 iterations]
+  [agent loop · 25 iterations local / 50 fallback]
         │  stream model text → collect tool calls → execute → feed results back
+        │  ends ONLY when task_complete validates its evidence
         ▼
   tools:
-    • read_file     (line-numbered, display-only)
-    • write_file    (refuses overwrite — forces edits through str_replace)
-    • str_replace   (old_str must match exactly once; collisions return line numbers)
-    • bash          (fresh subprocess per call; cwd = working dir; cd does not persist)
+    • read_file       (line-numbered, display-only)
+    • write_file      (refuses overwrite — forces edits through replace_in_file)
+    • replace_in_file (fenced SEARCH/REPLACE blocks; all-or-nothing; must match once)
+    • search          (ripgrep across the tree; ≤ 100 matches)
+    • bash            (fresh subprocess; cwd = working dir; model flags risky cmds)
+    • task_complete   (summary + files_changed + harness-verified evidence)
         │
         ▼
-  model: qwen3-coder:30b  (Ollama, local; reachable over the network/Tailscale)`,
+  model: qwen3-coder:30b  (Ollama, local; reachable over Tailscale)
+          └─ fallback: deepseek-v4-flash  (hosted; only if local is unreachable)`,
       detail: [
-        "Each iteration streams the model's output, executes any tool calls, and feeds results back as tool messages until the task is done or the iteration cap (25) is hit. All file paths resolve through a single _resolve_path() and cannot escape the working directory.",
+        "Each iteration streams the model's output, executes any tool calls, and feeds results back as tool messages. The loop ends only when the agent calls task_complete and its evidence validates — plain text with no tool call is nudged, not accepted — or when the iteration cap (25 local, 50 fallback) is hit. All file paths resolve through a single _resolve_path() and cannot escape the working directory.",
       ],
     },
     decisions: [
@@ -136,16 +140,24 @@ export const deepDives: Record<string, DeepDive> = {
         body: "the system prompt tells the model its exact absolute working directory, that file tools resolve against it, and that bash runs in a fresh subprocess each call so `cd` won't persist. Most agent failures are the model misunderstanding its own environment; stating the invariants explicitly removes a whole class of them.",
       },
       {
-        title: "Tool feedback designed for self-correction",
-        body: "str_replace failures are actionable, not opaque — zero matches returns the file's first 20 lines; multiple matches returns each match's line number with surrounding context and a hint to add more. The agent can fix its own mistake on the next turn instead of flailing.",
+        title: "Evidence-gated termination",
+        body: "the loop ends only when the model calls `task_complete` with the files it changed — and the harness verifies every cited path was actually read or searched this session. It's a direct guard against the failure mode where a model declares a success it can't support, or invents a bug to look busy: an unverifiable citation fails the call, and the model has to either drop the claim or go read the file before it can finish.",
       },
       {
-        title: "write_file refuses to overwrite",
-        body: "forcing every edit through str_replace produces precise, reviewable changes and prevents the model from clobbering a file by re-emitting it whole.",
+        title: "Tool feedback designed for self-correction",
+        body: "replace_in_file failures are actionable, not opaque — zero matches returns the file's first 20 lines; multiple matches returns each match's line number with surrounding context and a hint to add more. The agent can fix its own mistake on the next turn instead of flailing.",
+      },
+      {
+        title: "Fenced search/replace edits over re-emitting files",
+        body: "edits go through replace_in_file as fenced SEARCH/REPLACE blocks (the Aider/Cline format): each block's SEARCH must match exactly once, multiple blocks apply in one call, and the whole thing is all-or-nothing. This sidesteps the JSON-string-escaping failures of the old str_replace tool and keeps changes precise and reviewable; write_file refuses to overwrite, so the model can't clobber a file by re-emitting it whole.",
       },
       {
         title: "Display-only line numbers",
-        body: "read_file prefixes each line with a number, and the prompt is explicit that these must never appear in str_replace arguments — a subtle but common source of failed edits.",
+        body: "read_file prefixes each line with a number, and the prompt is explicit that these must never appear in replace_in_file SEARCH text — a subtle but common source of failed edits.",
+      },
+      {
+        title: "Local-first with a hosted fallback",
+        body: "a 3-second startup health check on the local Ollama endpoint decides the model; if it's unreachable the agent announces a fallback to a hosted DeepSeek endpoint instead of just dying. `/model` switches mid-session (history preserved) and `/cost` tracks per-model token use. The local box stays the default — the fallback exists so an unreachable homelab doesn't end the session, not to make the tool API-dependent.",
       },
       {
         title: "Path-safety hardening",
@@ -153,17 +165,18 @@ export const deepDives: Record<string, DeepDive> = {
       },
     ],
     lessons: [
-      "The interesting work in v0.1 wasn't adding features — it was making the harness legible to the model. The recurring failure mode was the agent misreading its own context: not knowing where it was, assuming `cd` persisted across bash calls, or getting a bare \"no match\" from an edit and having nothing to recover with. The fix in almost every case was better feedback, not a smarter model: tell it the working directory, make errors carry the resolved path and a hint, return enough context on a failed edit that the next attempt succeeds. Building it in one file made those failure modes impossible to hide from.",
+      "The interesting work early on wasn't adding features — it was making the harness legible to the model. The recurring failure mode was the agent misreading its own context: not knowing where it was, assuming `cd` persisted across bash calls, or getting a bare \"no match\" from an edit and having nothing to recover with. The fix in almost every case was better feedback, not a smarter model: tell it the working directory, make errors carry the resolved path and a hint, return enough context on a failed edit that the next attempt succeeds. Building it in one file made those failure modes impossible to hide from.",
+      "The later versions pushed on a different failure mode: the model declaring victory. Swapping str_replace for fenced search/replace blocks cut the edit-escaping failures, but the sharper lesson came with task_complete — left to end on its own, the model would sometimes announce a fix it hadn't made, or invent a bug just to have something to solve. Making termination a tool call whose evidence the harness checks against the files actually read turned \"trust the model's word\" into \"verify its citations,\" and the fabrications stopped. The hosted fallback came last, so an unreachable homelab degrades gracefully instead of ending the run.",
     ],
     codeUrl: "https://github.com/binlong09/qwen-code",
     scopeNote:
-      "This is v0.1 — deliberately minimal. Repo map / indexing, diff-preview approval, sandboxing, multi-model routing, and conversation persistence are explicitly out of scope for this version and planned for v1+.",
+      "Still deliberately minimal at v1.2. Repo-map / tree-sitter indexing, sandboxing, diff-preview approval, automatic in-session failover (the health check is startup-only), dollar-cost estimation, other providers, MCP, and subagents are out of scope for now.",
     assets: [
       {
         token: "ASSET_coding-agent",
         video: "/shots/coding-agent-demo.mp4",
         src: "/shots/coding-agent-demo.gif",
-        alt: "Terminal screen recording of the agent driving the local Qwen model through its tool loop — reading files, making str_replace edits, and running bash to complete a task",
+        alt: "Terminal screen recording of the agent driving the local Qwen model through its tool loop — reading files, making fenced search/replace edits, running bash, and signalling task_complete to finish",
         caption: "The self-hosted agent running its tool loop against the local Qwen model.",
       },
       // Append more { token, src, alt, caption } objects for additional captures.
