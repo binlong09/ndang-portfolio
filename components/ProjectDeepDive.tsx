@@ -82,6 +82,7 @@ export default function ProjectDeepDive({ deep }: { deep: DeepDive }) {
                   muted
                   loop
                   playsInline
+                  controls
                 />
               ) : a.src ? (
                 // eslint-disable-next-line @next/next/no-img-element
