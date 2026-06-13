@@ -3,7 +3,7 @@ import "./globals.css";
 import Reveal from "@/components/Reveal";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://example.com"), // TODO: set to your real domain
+  metadataBase: new URL("https://ndang.dev"), // TODO: set to your real domain
   title: {
     default: "Nghia Dang · Software Engineer",
     template: "%s · Nghia Dang",

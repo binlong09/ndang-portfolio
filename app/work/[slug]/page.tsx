@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProject, genericSlugs } from "@/lib/projects";
+import { getDeepDive } from "@/lib/deepDives";
 import SiteTopbar from "@/components/SiteTopbar";
+import ProjectDeepDive from "@/components/ProjectDeepDive";
 
 type Params = { slug: string };
 
@@ -38,6 +40,7 @@ export default async function ProjectPage({
   // Unknown slug, or a bespoke project that should be served by its own route.
   if (!project || project.bespoke) notFound();
 
+  const deep = getDeepDive(slug);
   const hasCode = project.codeUrl && project.codeUrl !== "TODO";
   const hasLive = project.liveUrl && project.liveUrl !== "TODO";
 
@@ -79,23 +82,28 @@ export default async function ProjectPage({
               </p>
             ))}
 
-            <div className="proj-links">
-              <a
-                href={hasCode ? project.codeUrl : undefined}
-                aria-disabled={!hasCode}
-                title={hasCode ? undefined : "Link coming soon"}
-              >
-                <span className="dot"></span>Code
-              </a>
-              <a
-                href={hasLive ? project.liveUrl : undefined}
-                aria-disabled={!hasLive}
-                title={hasLive ? undefined : "Link coming soon"}
-              >
-                <span className="dot"></span>Live
-              </a>
-            </div>
+            {/* default links row, unless a deep-dive supplies its own */}
+            {!deep && (
+              <div className="proj-links">
+                <a
+                  href={hasCode ? project.codeUrl : undefined}
+                  aria-disabled={!hasCode}
+                  title={hasCode ? undefined : "Link coming soon"}
+                >
+                  <span className="dot"></span>Code
+                </a>
+                <a
+                  href={hasLive ? project.liveUrl : undefined}
+                  aria-disabled={!hasLive}
+                  title={hasLive ? undefined : "Link coming soon"}
+                >
+                  <span className="dot"></span>Live
+                </a>
+              </div>
+            )}
           </div>
+
+          {deep && <ProjectDeepDive deep={deep} />}
 
           <Link href="/#work" className="backlink">
             ← back to work

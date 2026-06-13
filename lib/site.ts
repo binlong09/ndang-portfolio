@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 
 export const site = {
-  github: "https://github.com/YOUR_USERNAME", // TODO: your GitHub URL
-  linkedin: "https://www.linkedin.com/in/YOUR_PROFILE", // TODO: your LinkedIn URL
-  email: "you@yourdomain.dev", // TODO: your email address
+  github: "https://github.com/binlong09", // TODO: your GitHub URL
+  linkedin: "https://www.linkedin.com/in/nghia-dang/", // TODO: your LinkedIn URL
+  email: "binlong09@gmail.com", // TODO: your email address
 };

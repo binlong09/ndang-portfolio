@@ -111,14 +111,15 @@ export const projects: Project[] = [
   {
     slug: "coding-agent",
     title: "self-hosted coding agent",
-    tagline: "A terminal coding assistant built from scratch on local models.",
+    tagline:
+      "A single-file terminal coding agent on a local model — built to make the harness self-describing enough that the model can recover from its own mistakes.",
     listed: true,
-    codeUrl: "TODO", // TODO: add real code URL
+    codeUrl: "https://github.com/binlong09/qwen-code",
     liveUrl: "TODO", // TODO: add real live URL
     spec: [
-      { k: "stack", v: "Python · Ollama · Qwen3-Coder 30B · Tailscale · RTX 5090" },
-      { k: "scope", v: "solo build, ~1k+ LOC" },
-      { k: "status", v: "working" },
+      { k: "stack", v: "Python · Ollama · qwen3-coder:30b · OpenAI client · Tailscale" },
+      { k: "scope", v: "solo build, single file (agent.py)" },
+      { k: "status", v: "v0.1" },
     ],
     prose: [
       {
@@ -129,12 +130,12 @@ export const projects: Project[] = [
       {
         label: "What it does",
         body:
-          "It reads a codebase, proposes and applies edits, searches, and verifies its own work through a REPL, with human approval gating on every change. It grew from a small script into a 1000+ line agent using fenced search/replace blocks for precise edits, ripgrep for search, a completion-verification step, and multi-model routing. Primary inference runs on Qwen3-Coder served locally and reached over Tailscale, with a fallback model when needed.",
+          "A single-file agent (agent.py) drives a local Qwen model through a four-tool loop: read a file, write a file, str_replace edits, and run bash. It streams the model's output and feeds tool results back until the task is done, with a self-describing harness that states the working directory and tool invariants and returns actionable errors, so the model can recover from its own mistakes.",
       },
       {
         label: "Outcome",
         body:
-          "A genuinely usable, fully self-hosted alternative to commercial coding agents, and a much sharper feel for approval loops, tool-use design, and where agentic systems break.",
+          "A genuinely usable, fully self-hosted coding agent in a single file, and a much sharper feel for tool-use design, harness legibility, and where agentic systems break.",
       },
     ],
   },
