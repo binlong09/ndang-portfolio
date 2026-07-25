@@ -25,12 +25,23 @@ export type Asset = {
   caption: string; // shown small, directly under the image
 };
 
+/**
+ * A headline figure in the "/ scale" KPI row. `v` is the value (kept short and
+ * pre-compacted, e.g. "2.4M"); `k` is a sentence-case label, no trailing colon.
+ */
+export type Stat = { v: string; k: string };
+
 export type DeepDive = {
   architecture: {
     intro: string[]; // paragraphs above the diagram
     diagram: string; // ASCII component diagram (mono block)
     detail: string[]; // paragraphs below the diagram
   };
+  /**
+   * Optional "/ scale" section: a KPI row of headline figures plus the prose
+   * explaining what that volume forced. Rendered after the architecture.
+   */
+  scale?: { stats: Stat[]; body: string[] };
   decisions: Decision[]; // 2–4 tradeoff + why subsections
   lessons: string[]; // "what broke / what I learned"
   codeUrl: string; // REPO_URL_<project> placeholder
@@ -48,7 +59,7 @@ export const deepDives: Record<string, DeepDive> = {
   "rok-pipeline": {
     architecture: {
       intro: [
-        "Two repos, one pipeline. `rok-data-fetcher` gets lifetime governor statistics out of a live Rise of Kingdoms client and into CSVs; `kvk-web` turns those CSVs into a stats site that answers in tens of milliseconds on a hosting bill small enough to ignore. The seam between them is a ClickHouse table.",
+        "Two repos, one pipeline. `rok-data-fetcher` gets lifetime governor statistics out of a live Rise of Kingdoms client and into CSVs; `kvk-web` turns those CSVs into a stats site that answers in tens of milliseconds on a hosting bill small enough to ignore. The seam between them is a ClickHouse table, and it carries millions of rows a day - see *Scale*, below, which is the constraint most of the design is answering.",
         "The fetch side exists because the data has no other source. Community stat sites and Lilith's official Game Tools API expose only *timeframe* stats - kills inside a date window - and the API returns `KINGDOM_FORBIDDEN` for any kingdom the calling account has no character in. Lifetime total kill points, the T1-T5 kill breakdown, lifetime deaths and healing are held only by the running client, in the same table that backs the in-game Governor Profile card.",
       ],
       diagram: `  ── FETCH · rok-data-fetcher (Windows) ───────────────────────────────
@@ -81,7 +92,39 @@ export const deepDives: Record<string, DeepDive> = {
         "On the serving side the load-bearing idea is that a request should never compute anything. Scans land in ClickHouse, materialized views precompute the aggregates on a 12-hour refresh, pages render with ISR on a matching 12-hour window, and Cloudflare caches the HTML at the edge. A reader coming in from a Discord link gets an answer that was computed hours ago.",
       ],
     },
+    scale: {
+      stats: [
+        { v: "4,000", k: "Kingdoms in the sweep range" },
+        { v: "600", k: "Governors deep per kingdom" },
+        { v: "2.4M", k: "Profiles per full daily sweep" },
+        { v: "~876M", k: "Rows a year, at that cadence" },
+        { v: "49", k: "Stat columns per row" },
+        { v: "~800 hrs", k: "One client's time per sweep" },
+      ],
+      body: [
+        "The target sweep is 4,000 kingdoms at 600 governors each - 2.4M profiles per pass. Run daily and appended to a history that is never truncated, that is roughly 876M rows a year, each carrying 49 columns of lifetime stats. Both halves of the system are shaped by that number more than by anything else.",
+        "On the fetch side the binding constraint is a per-IP rate limit on the profile call, which paces out to about 1.2 seconds per governor. A full sweep is therefore ~800 hours of *single-client* time - about 33 days - so it can only exist as a fleet, and the highest-leverage optimisation is not fetching faster but fetching less. That is what adaptive scanning is for: stop at the City-Hall-25 boundary where the real accounts end, and leave the tail to a backfill that runs on idle capacity. Every profile skipped is the win.",
+        "On the serving side, a row count like that is exactly where a conventional row-store starts costing real money - you are storing an append-only log of wide numeric rows and asking analytical questions of it, which is the workload OLTP engines are worst at. ClickHouse is a much better fit for it, but the cost win is not automatic; it comes from modelling for the engine. Wide numeric rows compress hard columnwise, `alliance_tag` is `LowCardinality` so it dictionary-encodes in the hot path, `scans` is partitioned by month so queries prune whole partitions instead of reading history, and the ~250-byte avatar URL that would otherwise ride on all 2.4M rows a day lives in its own one-row-per-governor table.",
+        "The last piece is *when* the compute happens. Every serving aggregate is a refreshable materialized view rebuilt on the 12-hour ingest cadence, so a page view costs an indexed lookup rather than a scan, and the engine does real work twice a day instead of once per request. Because the pages and the edge cache are pinned to the same cadence and refreshed by an event rather than a timer, the database has nothing to answer between batches and idles. The whole site runs on one 2GB Fly machine that suspends when nobody is reading.",
+      ],
+    },
     decisions: [
+      {
+        title: "Re-key the log rather than scan it",
+        body: "`scans` is ordered by `(kingdom, captured_at, governor_id)`, which is right for the kingdom pages and useless for a governor page - asking for one governor's history against that key scans everything. Rather than add a second index to a table growing by millions of rows a day, `governor_history` is an *incremental* materialized view of the same data re-keyed by `(governor_id, captured_at, kingdom)`. It fires on insert, so it costs nothing at rest and grows with the log, and a per-governor trend becomes an indexed range read. Same rows, second ordering, no scan.",
+      },
+      {
+        title: "Refreshable views for aggregates, incremental for projections",
+        body: "the two kinds of materialized view solve different problems and the split is deliberate. Anything that aggregates across the whole corpus - `current_scan`, `matchup_delta`, `kingdom_movement` - is a *refreshable* view rebuilt on the ingest cadence, because recomputing it twice a day is far cheaper than maintaining it per insert. Anything that is a pure projection of the log - `governor_history` - is *incremental*, because it fires per row and there is nothing to recompute. Getting that backwards is how you pay for a rebuild that never needed to happen.",
+      },
+      {
+        title: "Idempotent ingest, because retries are normal",
+        body: "the fleet re-queues any kingdom a client fails to finish, so the same scan can be uploaded more than once - and at this volume a double-counted batch is not something you would notice by eye. `scans` is a `ReplacingMergeTree` keyed on `(kingdom, captured_at, governor_id)` and versioned by `uploaded_at`, so a re-upload collapses into the row it replaces instead of duplicating it. Retry safety is a property of the schema rather than a discipline the pipeline has to maintain.",
+      },
+      {
+        title: "Publish a scan wave atomically",
+        body: "kingdoms are scanned one at a time, so covering one matchup takes 20-30 minutes. Serving each kingdom as it lands would mean the first-scanned kingdoms' gains jump while the rest sit stale - and a screenshot of that half-updated scoreboard gets used to argue the wrong winner. So each matchup serves data only up to the *oldest* of its members' newest captures: mid-wave everyone sees the previous complete wave, and the whole matchup advances at once when the last kingdom lands. A member idle more than 48 hours stops pinning the watermark, so one dead kingdom cannot freeze a matchup forever.",
+      },
       {
         title: "Hook the reply, never open the window",
         body: "`FetchPlayerInfo(nil, id, 2)` returns a full profile but also opens the Governor Profile card, and firing a second fetch while a card is open crashes the client - which for a long time looked like a hard ceiling of one fetch per session. The fix was to stop treating it as an injection problem: `OnFetchPlayerInfoAck` is table-dispatched, so wrapping it to parse the profile and return *without* calling the original means no window ever opens. Hundreds of back-to-back fetches, zero crashes. This one insight is what turned a proof of concept into a pipeline.",
@@ -118,7 +161,7 @@ export const deepDives: Record<string, DeepDive> = {
     lessons: [
       "`PROGRESS.md` is 27 sections long and the honest version of this project. Section 18 announces that arbitrary-kingdom fetch is solved end to end; section 19 opens with `CORRECTION` and proves the mechanism in section 18 was wrong. That correction cost a session of crash-and-relaunch cycles to establish, and what it found was a genuine wall: the injection path can send a request for any kingdom and the server answers, but the client cannot *materialize* a foreign kingdom's entry objects in-process - it has no supporting data for a kingdom it isn't in - so touching the reply faults natively, uncatchable by `pcall`. Holding the raw reference is safe; reading one field is fatal.",
       "So I went the long way around: capture the encrypted reply off the wire and decrypt it with the keystream read out of the client's memory. That worked - the cipher came apart, a leaderboard reply was decrypted from the memory keystream end to end - and it was still the wrong answer. The shippable solution turned out to be much smaller and came from a question about game behaviour rather than about the binary: *why* does the second fetch crash? Because the first one left a profile card open. Hook the ack, never open the card, and the whole elaborate wire-decode subproject becomes unnecessary. The lesson I actually keep from this is that I spent days deepening an approach before I had finished understanding the failure it was meant to route around.",
-      "The web half taught the inverse lesson - that the cheap-looking thing has a cost curve. The first version loaded all of `current_scan` into an in-memory snapshot on the Node process, which is genuinely the fastest possible read right up until the table passes ~600k rows and OOMs production. Replacing it with bounded, keyset-paginated, indexed queries per request was *slower* per query and correct, because the edge cache and ISR were already absorbing the request rate that the snapshot was optimising for. Both halves of this project failed the same way: I optimised a layer before checking whether it was the layer under pressure.",
+      "The web half taught the inverse lesson - that the cheap-looking thing has a cost curve, and that scale finds it for you. The first version loaded all of `current_scan` into an in-memory snapshot on the Node process, which is genuinely the fastest possible read right up until the table passes ~600k rows and OOMs production. It didn't fail gradually; it worked perfectly at the volume I developed against and fell over at the volume it shipped into. Replacing it with bounded, keyset-paginated, indexed queries per request was *slower* per query and correct, because the edge cache and ISR were already absorbing the request rate the snapshot was optimising for. Both halves of this project failed the same way: I optimised a layer before checking whether it was the layer under pressure.",
       "I stopped working on it because scans take a long time and free tools already cover most of what this does. That was the right call and it doesn't subtract from what it was - the only project I've built that spans reverse-engineering a hostile binary, an unattended multi-machine fleet, a columnar data model, and a front end with a hard latency budget, where every layer had to be right for the last one to work.",
     ],
     codeUrl: "https://github.com/binlong09/rok-data-fetcher",
@@ -133,14 +176,16 @@ export const deepDives: Record<string, DeepDive> = {
         label: "PROGRESS.md (the RE log)",
       },
     ],
-    live: { url: "https://kvk-web.fly.dev/", label: "kvk.gg" },
+    // The site shipped under the kvk.gg domain, which has since lapsed; the app
+    // itself still runs on Fly, so link that rather than a name that won't resolve.
+    live: { url: "https://kvk-web.fly.dev/", label: "the app on Fly.io" },
     scopeNote:
       "Archived, and honest about its edges. The injection uses hard-coded `EngineDll.dll` offsets for one game build and needs re-deriving after an update; a governor who has never been scanned isn't in the roster yet, so brand-new accounts are the one coverage gap; and arbitrary-kingdom fetch at arbitrary times - the wire-capture route - was proven but never made robust, because the profile-fetch path made it unnecessary. This was reverse engineering of my own game client, on my own machine, for data the game already shows me.",
     assets: [
       {
         token: "ASSET_rok-pipeline-kingdom",
         // src: "/shots/rok-pipeline-kingdom.png",
-        alt: "A kingdom leaderboard on kvk.gg listing governors with lifetime kill points, kills, deaths and healing, sortable by column",
+        alt: "A kingdom leaderboard listing governors with lifetime kill points, kills, deaths and healing, sortable by column",
         caption:
           "A kingdom's leaderboard: lifetime totals no public API exposes, served from a precomputed table (capture to be added).",
       },

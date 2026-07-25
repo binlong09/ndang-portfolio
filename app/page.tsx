@@ -29,8 +29,9 @@ export default function Home() {
             decisions. By day that means high-throughput data pipelines at
             Walmart scale; on my own time it means whole pipelines built end to
             end — reverse-engineering a game client to get at data no API
-            exposes, then serving it to the web in tens of milliseconds, plus
-            LLM-powered tools from SEC-filing analysis engines to a self-hosted
+            exposes, harvesting 2.4M records a day across a fleet, and serving
+            them to the web in tens of milliseconds for pocket change. Plus
+            LLM-powered tools, from SEC-filing analysis engines to a self-hosted
             coding agent.
           </p>
           <p className="lede soft reveal">

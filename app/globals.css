@@ -191,6 +191,48 @@ section { padding: 18px 0; }
   font-size: 1rem;
   margin: 0 0 16px;
 }
+/* KPI row for a deep-dive's "/ scale" section. Headline figures, not a chart:
+   a handful of standalone numbers is a stat row, and a one-bar chart of each
+   would say less. Values use proportional figures on purpose - tabular-nums
+   gives every digit a zero's width, which reads loose at this size, so it is
+   reserved for columns that must align vertically. Colour here is decoration,
+   not encoding: nothing is keyed by hue, so the labels stay in ink tokens. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 0 0 22px;
+}
+@media (max-width: 560px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+}
+/* Each tile carries its own border rather than the grid painting gaps over a
+   background, so a stat count that doesn't fill the last row leaves empty
+   space instead of visible dead cells. Left accent rule matches `.spec`. */
+.kpi {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  padding: 14px 16px;
+}
+.kpi-v {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.6rem;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--accent-deep);
+  margin: 0 0 5px;
+}
+.kpi-k {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
 /* Marks the one project to lead with; set `flagship` in lib/projects.ts. */
 .flagship {
   font-family: var(--mono);
