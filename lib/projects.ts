@@ -54,9 +54,9 @@ export type Project = {
 export const projects: Project[] = [
   {
     slug: "rok-pipeline",
-    title: "kvk.gg",
+    title: "rok-data-pipeline",
     tagline:
-      "A full data pipeline: reverse-engineered game-client injection, a multi-machine harvesting fleet, and a stats site that serves precomputed answers in tens of milliseconds.",
+      "2.4M game profiles a day, taken out of a live client's memory and served to the web in tens of milliseconds — a reverse-engineered fetch layer, a multi-machine harvesting fleet, and a ClickHouse serving model built so the whole thing costs almost nothing to run.",
     listed: true,
     flagship: true,
     codeUrl: "https://github.com/binlong09/rok-data-fetcher",
@@ -66,6 +66,10 @@ export const projects: Project[] = [
         k: "stack",
         v: "Python · Win32 thread hijack · Lua C API · ClickHouse · Next.js · Fly.io · Cloudflare · Tailscale",
       },
+      {
+        k: "scale",
+        v: "4,000 kingdoms · 600 deep · 2.4M profiles/day · ~876M rows/year",
+      },
       { k: "scope", v: "solo build, two repos, end to end" },
       { k: "status", v: "live; no longer actively developed" },
     ],
@@ -73,12 +77,17 @@ export const projects: Project[] = [
       {
         label: "Problem",
         body:
-          "The numbers that actually decide a Rise of Kingdoms KvK — a governor's <em>lifetime</em> total kill points, the T1–T5 kill breakdown, lifetime deaths and healing — exist in no public API. Lilith's official endpoint returns only timeframe stats, and it 403s for any kingdom you don't have a character in. Those totals live in exactly one place: the memory of a running game client.",
+          "The numbers that actually decide a Rise of Kingdoms KvK — a governor's <em>lifetime</em> total kill points, the T1–T5 kill breakdown, lifetime deaths and healing — exist in no public API. Lilith's official endpoint returns only timeframe stats, and it 403s for any kingdom you don't have a character in. Those totals live in exactly one place: the memory of a running game client. Getting one governor out is a reverse-engineering problem. Getting <em>every</em> governor in <em>every</em> kingdom, every day, is a systems problem.",
       },
       {
         label: "What it does",
         body:
-          "Two halves. The fetcher runs a Lua chunk inside the live PC client by briefly hijacking an engine thread, calls the game's own by-ID profile fetch, and hooks the reply handler so the profile card never opens — which is what makes hundreds of back-to-back fetches crash-free instead of fatal. A coordinator hands kingdoms to a fleet of sandboxed clients across several machines over Tailscale, each one self-sizing its scan to the kingdom. The web half ingests those scans into ClickHouse, precomputes every aggregate in refreshable materialized views, and serves them through ISR and a Cloudflare edge cache.",
+          "Two halves. The fetcher runs a Lua chunk inside the live PC client by briefly hijacking an engine thread, calls the game's own by-ID profile fetch, and hooks the reply handler so the profile card never opens — which is what makes hundreds of back-to-back fetches crash-free instead of fatal. A coordinator then hands kingdoms to a fleet of sandboxed clients across several machines over Tailscale, each self-sizing its scan. The serving half ingests the results into ClickHouse and precomputes every aggregate in refreshable materialized views, so a page view is an indexed lookup rather than a query over history.",
+      },
+      {
+        label: "Scale",
+        body:
+          "A full sweep is 4,000 kingdoms at 600 governors each — 2.4M profiles a day, appended to a history that is never truncated, which compounds to roughly <em>876M rows a year</em> at 49 columns apiece. That number is what shapes both halves. A per-IP rate limit paces the fetch at ~1.2s per governor, so one sweep is ~800 hours of single-client time and only exists as a fleet — which makes <em>not</em> fetching the real optimisation. And on the serving side it is precisely the volume where a row-store starts costing real money, so the whole data model is built for a columnar engine: month partitions, dictionary-encoded columns, wide rows kept narrow, and every aggregate precomputed on the ingest cadence. The result serves in tens of milliseconds off one 2GB machine that suspends when idle.",
       },
       {
         label: "What I learned",

@@ -33,6 +33,27 @@ export default function ProjectDeepDive({ deep }: { deep: DeepDive }) {
         <p key={i}>{fmt(p)}</p>
       ))}
 
+      {/* ---- Scale (optional) ---- */}
+      {deep.scale && (
+        <>
+          <div className="section-head">
+            <span className="tag">/ scale</span>
+            <h2>Scale</h2>
+          </div>
+          <div className="kpis">
+            {deep.scale.stats.map((s) => (
+              <div className="kpi" key={s.k}>
+                <p className="kpi-v">{s.v}</p>
+                <p className="kpi-k">{s.k}</p>
+              </div>
+            ))}
+          </div>
+          {deep.scale.body.map((p, i) => (
+            <p key={i}>{fmt(p)}</p>
+          ))}
+        </>
+      )}
+
       {/* ---- Technical decisions ---- */}
       <div className="section-head">
         <span className="tag">/ technical decisions</span>
