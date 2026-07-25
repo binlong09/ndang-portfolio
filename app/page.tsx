@@ -27,8 +27,11 @@ export default function Home() {
           <p className="lede reveal">
             I build systems that turn messy, high-volume real-world data into
             decisions. By day that means high-throughput data pipelines at
-            Walmart scale; on my own time it means LLM-powered tools built end to
-            end, from SEC-filing analysis engines to a self-hosted coding agent.
+            Walmart scale; on my own time it means whole pipelines built end to
+            end — reverse-engineering a game client to get at data no API
+            exposes, then serving it to the web in tens of milliseconds, plus
+            LLM-powered tools from SEC-filing analysis engines to a self-hosted
+            coding agent.
           </p>
           <p className="lede soft reveal">
             Software Engineer III at Walmart Global Tech. Starting an M.S. in
@@ -61,6 +64,7 @@ export default function Home() {
               <div className="record reveal" key={p.slug}>
                 <h3>
                   <Link href={`/work/${p.slug}`}>{p.title}</Link>
+                  {p.flagship && <span className="flagship">flagship</span>}
                 </h3>
                 <p className="tagline">{p.tagline}</p>
                 <div className="spec">
@@ -144,7 +148,10 @@ export default function Home() {
               </div>
               <div className="group">
                 <p className="k">Data &amp; web</p>
-                <p className="v">Turso / SQLite · Next.js · Vercel · GitHub Actions</p>
+                <p className="v">
+                  ClickHouse · Turso / SQLite · Next.js · Vercel · Fly.io ·
+                  Cloudflare · GitHub Actions
+                </p>
               </div>
             </div>
           </div>

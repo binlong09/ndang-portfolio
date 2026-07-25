@@ -191,6 +191,22 @@ section { padding: 18px 0; }
   font-size: 1rem;
   margin: 0 0 16px;
 }
+/* Marks the one project to lead with; set `flagship` in lib/projects.ts. */
+.flagship {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-deep);
+  background: var(--accent-tint);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 2px 7px;
+  margin-left: 10px;
+  vertical-align: 3px;
+  white-space: nowrap;
+}
 .spec {
   font-family: var(--mono);
   font-size: 12px;
