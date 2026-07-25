@@ -44,9 +44,49 @@ export type Project = {
   listed?: boolean;
   /** When true, content is placeholder and needs to be written. */
   placeholder?: boolean;
+  /**
+   * Marks the single piece of work to lead with. Renders a small mono badge on
+   * the landing-page record and on the project page header.
+   */
+  flagship?: boolean;
 };
 
 export const projects: Project[] = [
+  {
+    slug: "rok-pipeline",
+    title: "kvk.gg",
+    tagline:
+      "A full data pipeline: reverse-engineered game-client injection, a multi-machine harvesting fleet, and a stats site that serves precomputed answers in tens of milliseconds.",
+    listed: true,
+    flagship: true,
+    codeUrl: "https://github.com/binlong09/rok-data-fetcher",
+    liveUrl: "https://kvk-web.fly.dev/",
+    spec: [
+      {
+        k: "stack",
+        v: "Python · Win32 thread hijack · Lua C API · ClickHouse · Next.js · Fly.io · Cloudflare · Tailscale",
+      },
+      { k: "scope", v: "solo build, two repos, end to end" },
+      { k: "status", v: "live; no longer actively developed" },
+    ],
+    prose: [
+      {
+        label: "Problem",
+        body:
+          "The numbers that actually decide a Rise of Kingdoms KvK — a governor's <em>lifetime</em> total kill points, the T1–T5 kill breakdown, lifetime deaths and healing — exist in no public API. Lilith's official endpoint returns only timeframe stats, and it 403s for any kingdom you don't have a character in. Those totals live in exactly one place: the memory of a running game client.",
+      },
+      {
+        label: "What it does",
+        body:
+          "Two halves. The fetcher runs a Lua chunk inside the live PC client by briefly hijacking an engine thread, calls the game's own by-ID profile fetch, and hooks the reply handler so the profile card never opens — which is what makes hundreds of back-to-back fetches crash-free instead of fatal. A coordinator hands kingdoms to a fleet of sandboxed clients across several machines over Tailscale, each one self-sizing its scan to the kingdom. The web half ingests those scans into ClickHouse, precomputes every aggregate in refreshable materialized views, and serves them through ISR and a Cloudflare edge cache.",
+      },
+      {
+        label: "What I learned",
+        body:
+          "Most of the project was being wrong in public. <em>PROGRESS.md</em> runs 27 sections across a dozen sessions, including a section that declares arbitrary-kingdom fetch solved and the next one that retracts it with proof. The wins came from reading, not guessing: passive disassembly found the crash root cause that a debugger couldn't (the anti-tamper layer fights debuggers but ignores <code>ReadProcessMemory</code>), and the fix that finally shipped was noticing <em>why</em> the client crashed on a second fetch rather than out-engineering it.",
+      },
+    ],
+  },
   {
     slug: "stock-vetter",
     title: "stock-vetter",

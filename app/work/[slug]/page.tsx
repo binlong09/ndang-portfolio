@@ -56,7 +56,10 @@ export default async function ProjectPage({
 
           <div className="proj-head">
             <p className="eyebrow">/ project</p>
-            <h1>{project.title}</h1>
+            <h1>
+              {project.title}
+              {project.flagship && <span className="flagship">flagship</span>}
+            </h1>
             <p className="tagline">{project.tagline}</p>
             <div className="spec">
               {project.spec.map((f) => (

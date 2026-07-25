@@ -58,9 +58,18 @@ export default function ProjectDeepDive({ deep }: { deep: DeepDive }) {
 
       {/* ---- links row ---- */}
       <div className="proj-links">
-        <a href={deep.codeUrl}>
-          <span className="dot"></span>Code
-        </a>
+        {deep.codeLinks ? (
+          deep.codeLinks.map((l) => (
+            <a href={l.url} key={l.url}>
+              <span className="dot"></span>
+              {l.label}
+            </a>
+          ))
+        ) : (
+          <a href={deep.codeUrl}>
+            <span className="dot"></span>Code
+          </a>
+        )}
         {deep.live && (
           <a href={deep.live.url}>
             <span className="dot"></span>Live · {deep.live.label}
